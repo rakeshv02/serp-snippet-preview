@@ -115,6 +115,7 @@ ins.adsbygoogle,.ad-banner iframe,.ad-slot iframe,.ad-container iframe{visibilit
       <textarea id="desc" rows="3" maxlength="600">Preview your Google search snippet in real time. Check title and meta description pixel width for desktop and mobile before you publish, and stop your text getting cut off.</textarea>
       <div class="meter"><i id="desc-bar"></i></div>
       <div class="meter-info"><span id="desc-px"></span><span id="desc-ch"></span></div>
+      <div id="readability-result" style="display:none;margin-top:6px;font-size:12px;color:#64748b">Readability: <strong id="readability-score" style="color:#16a34a">74 — Easy</strong> <span style="color:#94a3b8">(Flesch–Kincaid)</span></div>
 
       <label>Preview device</label>
       <div class="toggle-row">
@@ -425,6 +426,44 @@ document.getElementById('copy-html').addEventListener('click', function(){
   copyText(html, this);
 });
 
+// Flesch-Kincaid readability for description
+function fkCountSyllables(word) {
+  word = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!word) return 0;
+  if (word.length <= 3) return 1;
+  word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '').replace(/^y/, '');
+  var m = word.match(/[aeiouy]{1,2}/g);
+  return m ? m.length : 1;
+}
+function fkScore(text) {
+  var sentences = text.split(/[.!?]+/).filter(function(s){ return s.trim().length > 0; });
+  var words = text.split(/\s+/).filter(function(w){ return w.trim().length > 0; });
+  var syllables = words.reduce(function(n, w){ return n + fkCountSyllables(w); }, 0);
+  if (!sentences.length || !words.length) return null;
+  var score = 206.835 - 1.015 * (words.length / sentences.length) - 84.6 * (syllables / words.length);
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+function fkLabel(score) {
+  if (score >= 80) return { label: 'Very easy', color: '#16a34a' };
+  if (score >= 60) return { label: 'Easy', color: '#65a30d' };
+  if (score >= 50) return { label: 'Fairly easy', color: '#ca8a04' };
+  if (score >= 30) return { label: 'Difficult', color: '#ea580c' };
+  return { label: 'Very difficult', color: '#dc2626' };
+}
+function updateDescReadability() {
+  var text = document.getElementById('desc').value.trim();
+  var resultEl = document.getElementById('readability-result');
+  var scoreEl = document.getElementById('readability-score');
+  if (!text) { resultEl.style.display = 'none'; return; }
+  var score = fkScore(text);
+  if (score === null) { resultEl.style.display = 'none'; return; }
+  var info = fkLabel(score);
+  scoreEl.textContent = score + ' — ' + info.label;
+  scoreEl.style.color = info.color;
+  resultEl.style.display = 'block';
+}
+document.getElementById('desc').addEventListener('input', updateDescReadability);
+updateDescReadability();
 render();
 </script>
 </body>
